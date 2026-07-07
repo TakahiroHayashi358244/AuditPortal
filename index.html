@@ -103,9 +103,9 @@
     <div class="card">
       <div class="row2">
         <div class="field"><label class="lbl">拠点(Site)</label>
-          <input id="fSite" value="TPY1"></div>
+          <select id="fSite"><option>読み込み中...</option></select></div>
         <div class="field"><label class="lbl">Region</label>
-          <input id="fRegion" value="ECCF"></div>
+          <select id="fRegion"><option>読み込み中...</option></select></div>
       </div>
       <div class="row2">
         <div class="field"><label class="lbl">監査担当者</label>
@@ -205,6 +205,28 @@ function switchTab(name){
   });
   if(name==='history') loadHistory();
   if(name==='admin') renderAdminList();
+}
+
+/* ---- 設定（拠点・Region）読み込み ---- */
+async function loadSettings(){
+  try{
+    const r=await jsonpGet({action:'getSettings'});
+    if(!r.ok){ fillSelect('fSite',['TPY1']); fillSelect('fRegion',['ECCF']); return; }
+    fillSelect('fSite', r.sites&&r.sites.length?r.sites:['TPY1'], r.defaultSite);
+    fillSelect('fRegion', r.regions&&r.regions.length?r.regions:['ECCF'], r.defaultRegion);
+  }catch(e){
+    fillSelect('fSite',['TPY1']); fillSelect('fRegion',['ECCF']);
+  }
+}
+function fillSelect(id, list, def){
+  const sel=document.getElementById(id);
+  sel.innerHTML='';
+  list.forEach(v=>{
+    const o=document.createElement('option');
+    o.value=v; o.textContent=v;
+    if(def && v===def) o.selected=true;
+    sel.appendChild(o);
+  });
 }
 
 /* ---- 設問読み込み ---- */
@@ -378,6 +400,7 @@ function toast(msg){
   toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
 }
 
+loadSettings();
 loadQuestions();
 </script>
 </body>
