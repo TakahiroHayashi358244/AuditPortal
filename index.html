@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Apollo Audit Portal</title>
+<style>
+  :root{
+    --bg:#f4f5f7; --card:#fff; --ink:#1a1a1a; --sub:#6b7280;
+    --line:#e3e6ea; --accent:#232f3e; --gold:#ff9900;
+    --yes:#e8f5e9; --yes-b:#2e7d32; --no:#ffebee; --no-b:#c62828;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    font-size:15px;line-height:1.5;padding-bottom:90px;}
+  /* ヘッダー */
+  header{position:sticky;top:0;z-index:20;background:var(--accent);color:#fff;
+    padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow);}
+  header .logo{width:28px;height:28px;border-radius:50%;background:var(--gold);
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#232f3e;font-size:13px;}
+  header .title{font-weight:700;font-size:16px;flex:1;}
+  header .region{font-size:12px;opacity:.85;}
+  /* タブ */
+  .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:52px;z-index:15;}
+  .tab{flex:1;padding:12px;text-align:center;font-size:13px;color:var(--sub);border-bottom:2px solid transparent;font-weight:600;}
+  .tab.on{color:var(--accent);border-bottom-color:var(--gold);}
+  /* コンテナ */
+  .wrap{padding:14px;max-width:640px;margin:0 auto;}
+  .card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+  .field{margin-bottom:12px;}
+  label.lbl{display:block;font-size:12px;color:var(--sub);margin-bottom:5px;font-weight:600;}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);
+    border-radius:9px;font-size:15px;background:#fff;font-family:inherit;}
+  textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  /* 設問 */
+  .q-section{font-size:12px;font-weight:700;color:var(--gold);margin:4px 0 10px;letter-spacing:.5px;}
+  .q-title{font-weight:600;font-size:15px;margin-bottom:4px;}
+  .q-help{font-size:12.5px;color:var(--sub);margin-bottom:12px;white-space:pre-wrap;}
+  .yn{display:flex;gap:10px;}
+  .yn button{flex:1;padding:13px;border:1.5px solid var(--line);border-radius:10px;
+    background:#fff;font-size:15px;font-weight:700;color:var(--sub);}
+  .yn button.yes.on{background:var(--yes);border-color:var(--yes-b);color:var(--yes-b);}
+  .yn button.no.on{background:var(--no);border-color:var(--no-b);color:var(--no-b);}
+  .q-comment{margin-top:10px;}
+  .q-comment input{font-size:14px;}
+  /* 進捗 */
+  .progress{position:sticky;top:52px;z-index:14;background:var(--bg);padding:8px 14px 4px;}
+  .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;}
+  .bar>i{display:block;height:100%;background:var(--gold);width:0;transition:width .2s;}
+  .prog-text{font-size:11px;color:var(--sub);margin-top:4px;}
+  /* フッター送信 */
+  .footer{position:fixed;bottom:0;left:0;right:0;background:var(--card);
+    border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;z-index:20;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+  .btn{flex:1;padding:15px;border:none;border-radius:11px;font-size:16px;font-weight:700;color:#fff;background:var(--accent);}
+  .btn.gold{background:var(--gold);color:#232f3e;}
+  .btn:disabled{opacity:.5;}
+  .btn.sm{padding:11px;font-size:14px;flex:none;}
+  /* 一覧 */
+  .audit-item{display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid var(--line);}
+  .audit-item:last-child{border-bottom:none;}
+  .ai-main{font-weight:600;font-size:14px;}
+  .ai-sub{font-size:12px;color:var(--sub);margin-top:2px;}
+  .score{font-weight:800;font-size:18px;}
+  .score.hi{color:var(--yes-b);} .score.mid{color:var(--gold);} .score.lo{color:var(--no-b);}
+  /* トースト */
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+    background:#1a1a1a;color:#fff;padding:12px 20px;border-radius:24px;font-size:14px;
+    z-index:50;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;}
+  .toast.show{opacity:.95;}
+  .hidden{display:none;}
+  .muted{color:var(--sub);font-size:13px;text-align:center;padding:24px;}
+  .add-q input,.add-q select,.add-q textarea{margin-bottom:8px;}
+  details summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;padding:6px 0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">A</div>
+  <div class="title">Apollo Audit Portal</div>
+  <div class="region" id="regionLabel">ECCF - TPY1</div>
+</header>
+
+<div class="tabs">
+  <div class="tab on" data-tab="audit" onclick="switchTab('audit')">監査実施</div>
+  <div class="tab" data-tab="history" onclick="switchTab('history')">履歴</div>
+  <div class="tab" data-tab="admin" onclick="switchTab('admin')">項目管理</div>
+</div>
+
+<!-- ===== 監査実施 ===== -->
+<div id="tab-audit">
+  <div class="progress">
+    <div class="bar"><i id="progBar"></i></div>
+    <div class="prog-text" id="progText">読み込み中...</div>
+  </div>
+  <div class="wrap">
+    <div class="card">
+      <div class="row2">
+        <div class="field"><label class="lbl">拠点(Site)</label>
+          <input id="fSite" value="TPY1"></div>
+        <div class="field"><label class="lbl">Region</label>
+          <input id="fRegion" value="ECCF"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="lbl">監査担当者</label>
+          <input id="fAuditor" placeholder="氏名"></div>
+        <div class="field"><label class="lbl">対象者/対象</label>
+          <input id="fTarget" placeholder="対象者名など"></div>
+      </div>
+    </div>
+
+    <div id="questionList"></div>
+
+    <div class="card">
+      <div class="field"><label class="lbl">全体メモ（任意）</label>
+        <textarea id="fNote" placeholder="気づき・補足など"></textarea></div>
+    </div>
+  </div>
+  <div class="footer">
+    <button class="btn sm" style="background:#6b7280;flex:none;" onclick="resetForm()">クリア</button>
+    <button class="btn gold" id="submitBtn" onclick="submitAudit()">監査を送信</button>
+  </div>
+</div>
+
+<!-- ===== 履歴 ===== -->
+<div id="tab-history" class="hidden">
+  <div class="wrap">
+    <div class="card">
+      <div class="field"><label class="lbl">拠点で絞り込み（任意）</label>
+        <input id="hSite" placeholder="例: TPY1" oninput="loadHistory()"></div>
+      <div id="historyList"><div class="muted">読み込み中...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 項目管理 ===== -->
+<div id="tab-admin" class="hidden">
+  <div class="wrap">
+    <div class="card add-q">
+      <div class="q-section">監査項目を追加</div>
+      <label class="lbl">セクション</label>
+      <input id="aSection" value="Stow">
+      <label class="lbl">質問文</label>
+      <textarea id="aQuestion" placeholder="例: ○○を確認しているか"></textarea>
+      <label class="lbl">補足説明（任意）</label>
+      <textarea id="aHelp" placeholder="判断基準など"></textarea>
+      <label class="lbl">表示順（小さいほど上・任意）</label>
+      <input id="aOrder" type="number" placeholder="例: 60">
+      <button class="btn gold" style="width:100%;margin-top:8px;" onclick="addQuestion()">項目を追加</button>
+      <p class="muted" style="text-align:left;padding:12px 0 0;">
+        ※ 追加した項目はスプレッドシートの Questions シートにも直接追記できます。<br>
+        active 列を FALSE にすると非表示になります。
+      </p>
+    </div>
+    <div class="card">
+      <div class="q-section">現在の項目一覧</div>
+      <div id="adminList"><div class="muted">読み込み中...</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== 設定：GASデプロイURLをここに貼る ===== */
+const GAS_URL = 'https://script.google.com/macros/s/XXXXXXXXXXXXXXXXXXXXXXXX/exec';
+
+let QUESTIONS = [];
+let ANSWERS = {};   // questionId -> {answer, comment}
+
+/* ---- JSONP (GET) ---- */
+function jsonpGet(params){
+  return new Promise((resolve,reject)=>{
+    const cb='cb_'+Math.random().toString(36).slice(2);
+    window[cb]=(data)=>{resolve(data);delete window[cb];s.remove();};
+    const q=Object.keys(params).map(k=>k+'='+encodeURIComponent(params[k])).join('&');
+    const s=document.createElement('script');
+    s.src=GAS_URL+'?'+q+'&callback='+cb;
+    s.onerror=()=>{reject(new Error('通信エラー'));s.remove();};
+    document.body.appendChild(s);
+    setTimeout(()=>{if(window[cb]){reject(new Error('タイムアウト'));delete window[cb];}},15000);
+  });
+}
+/* ---- POST (no-cors + text/plain で回避) ---- */
+async function postData(payload){
+  const res=await fetch(GAS_URL,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+/* ---- タブ切替 ---- */
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===name));
+  ['audit','history','admin'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden',t!==name);
+  });
+  if(name==='history') loadHistory();
+  if(name==='admin') renderAdminList();
+}
+
+/* ---- 設問読み込み ---- */
+async function loadQuestions(){
+  try{
+    const r=await jsonpGet({action:'getQuestions'});
+    if(!r.ok){toast(r.error||'項目取得失敗');return;}
+    QUESTIONS=r.questions;
+    renderQuestions();
+  }catch(e){
+    document.getElementById('progText').textContent='通信エラー（GAS_URLを確認）';
+    toast('通信エラー: '+e.message);
+  }
+}
+
+function renderQuestions(){
+  const box=document.getElementById('questionList');
+  box.innerHTML='';
+  let lastSection='';
+  QUESTIONS.forEach(q=>{
+    const card=document.createElement('div');
+    card.className='card';
+    let html='';
+    if(q.section && q.section!==lastSection){
+      html+=`<div class="q-section">${esc(q.section)}</div>`;
+      lastSection=q.section;
+    }
+    html+=`<div class="q-title">${esc(q.question)}</div>`;
+    if(q.helpText) html+=`<div class="q-help">${esc(q.helpText)}</div>`;
+    html+=`<div class="yn">
+      <button class="yes" onclick="answer('${q.questionId}','はい',this)">はい</button>
+      <button class="no" onclick="answer('${q.questionId}','いいえ',this)">いいえ</button>
+    </div>
+    <div class="q-comment"><input placeholder="コメント（任意）"
+      oninput="comment('${q.questionId}',this.value)"></div>`;
+    card.innerHTML=html;
+    box.appendChild(card);
+  });
+  updateProgress();
+}
+
+function answer(qid,val,btn){
+  ANSWERS[qid]=ANSWERS[qid]||{};
+  ANSWERS[qid].answer=val;
+  const yn=btn.parentElement;
+  yn.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  updateProgress();
+}
+function comment(qid,val){
+  ANSWERS[qid]=ANSWERS[qid]||{};
+  ANSWERS[qid].comment=val;
+}
+function updateProgress(){
+  const total=QUESTIONS.length;
+  const done=QUESTIONS.filter(q=>ANSWERS[q.questionId]&&ANSWERS[q.questionId].answer).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progBar').style.width=pct+'%';
+  document.getElementById('progText').textContent=`${done} / ${total} 項目 回答済み`;
+  document.getElementById('submitBtn').disabled=(done<total);
+}
+
+/* ---- 送信 ---- */
+async function submitAudit(){
+  const auditor=document.getElementById('fAuditor').value.trim();
+  if(!auditor){toast('監査担当者を入力してください');return;}
+  const answers=QUESTIONS.map(q=>({
+    questionId:q.questionId, question:q.question, section:q.section,
+    type:q.type||'yesno',
+    answer:(ANSWERS[q.questionId]||{}).answer||'',
+    comment:(ANSWERS[q.questionId]||{}).comment||''
+  }));
+  const payload={
+    action:'submitAudit',
+    region:document.getElementById('fRegion').value.trim(),
+    site:document.getElementById('fSite').value.trim(),
+    auditor:auditor,
+    target:document.getElementById('fTarget').value.trim(),
+    note:document.getElementById('fNote').value.trim(),
+    answers:answers
+  };
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;btn.textContent='送信中...';
+  try{
+    const r=await postData(payload);
+    if(r.ok){
+      toast(`送信完了 スコア:${r.score}%`);
+      resetForm();
+    }else{ toast('送信失敗: '+(r.error||'')); }
+  }catch(e){ toast('通信エラー: '+e.message); }
+  btn.disabled=false;btn.textContent='監査を送信';
+}
+
+function resetForm(){
+  ANSWERS={};
+  document.getElementById('fTarget').value='';
+  document.getElementById('fNote').value='';
+  renderQuestions();
+  window.scrollTo(0,0);
+}
+
+/* ---- 履歴 ---- */
+async function loadHistory(){
+  const box=document.getElementById('historyList');
+  box.innerHTML='<div class="muted">読み込み中...</div>';
+  const site=document.getElementById('hSite').value.trim();
+  try{
+    const p={action:'listAudits',limit:50};
+    if(site) p.site=site;
+    const r=await jsonpGet(p);
+    if(!r.ok||!r.audits.length){box.innerHTML='<div class="muted">データがありません</div>';return;}
+    box.innerHTML='';
+    r.audits.forEach(a=>{
+      const s=Number(a.score);
+      const cls=s>=90?'hi':s>=70?'mid':'lo';
+      const el=document.createElement('div');
+      el.className='audit-item';
+      el.innerHTML=`<div>
+        <div class="ai-main">${esc(a.auditor||'-')} / ${esc(a.target||'-')}</div>
+        <div class="ai-sub">${esc(a.site||'')} ・ ${esc(a.timestamp||'')}</div>
+      </div><div class="score ${cls}">${a.score!==''?a.score+'%':'-'}</div>`;
+      box.appendChild(el);
+    });
+  }catch(e){box.innerHTML='<div class="muted">通信エラー</div>';}
+}
+
+/* ---- 項目管理 ---- */
+async function addQuestion(){
+  const question=document.getElementById('aQuestion').value.trim();
+  if(!question){toast('質問文を入力してください');return;}
+  const payload={
+    action:'addQuestion',
+    section:document.getElementById('aSection').value.trim(),
+    question:question,
+    helpText:document.getElementById('aHelp').value.trim(),
+    order:document.getElementById('aOrder').value,
+    type:'yesno'
+  };
+  try{
+    const r=await postData(payload);
+    if(r.ok){
+      toast('項目を追加しました');
+      document.getElementById('aQuestion').value='';
+      document.getElementById('aHelp').value='';
+      document.getElementById('aOrder').value='';
+      await loadQuestions();
+      renderAdminList();
+    }else{toast('失敗: '+(r.error||''));}
+  }catch(e){toast('通信エラー: '+e.message);}
+}
+function renderAdminList(){
+  const box=document.getElementById('adminList');
+  if(!QUESTIONS.length){box.innerHTML='<div class="muted">項目がありません</div>';return;}
+  box.innerHTML='';
+  QUESTIONS.forEach((q,i)=>{
+    const el=document.createElement('div');
+    el.className='audit-item';
+    el.innerHTML=`<div><div class="ai-main">${i+1}. ${esc(q.question)}</div>
+      <div class="ai-sub">${esc(q.section)} ・ 順:${q.order}</div></div>`;
+    box.appendChild(el);
+  });
+}
+
+/* ---- utils ---- */
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+loadQuestions();
+</script>
+</body>
+</html>
